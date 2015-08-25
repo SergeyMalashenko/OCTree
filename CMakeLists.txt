@@ -1,0 +1,10 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+PROJECT(octree++)
+
+SET(CMAKE_CXX_FLAGS "-pthread -std=c++11 -lpthread ${CMAKE_CXX_FLAGS}")
+
+INCLUDE_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR}/include )
+
+ADD_EXECUTABLE(object ${CMAKE_CURRENT_SOURCE_DIR}/examples/object.cpp ${CMAKE_CURRENT_SOURCE_DIR}/include/octree.cpp )
+ADD_EXECUTABLE(point  ${CMAKE_CURRENT_SOURCE_DIR}/examples/point.cpp  ${CMAKE_CURRENT_SOURCE_DIR}/include/octree.cpp )
+
