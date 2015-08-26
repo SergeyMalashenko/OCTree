@@ -19,10 +19,10 @@ namespace OCTree {
 	
 	template <size_t __K, typename __Val, class __Sync>
 		struct _Node {
-		    typedef __Val                                                  			        object_type;
-		    typedef const __Val                                                       object_const_type;
-		    typedef __Val&                                                             object_reference;
-		    typedef const __Val&                                                 object_const_reference;
+		   	typedef __Val                                         			        object_type;
+		   	typedef const __Val                                                       object_const_type;
+		   	typedef __Val&                                                             object_reference;
+			typedef const __Val&                                                 object_const_reference;
 			typedef typename __Val::value_type                                               value_type;
 			typedef __Sync                                                             sync_object_type;
 			typedef typename std::array<_Node*, power<__K>::result>::iterator             node_iterator;
@@ -30,8 +30,7 @@ namespace OCTree {
 			typedef typename std::vector<object_type>::iterator                           data_iterator;
 			typedef typename std::vector<object_type>::const_iterator               data_const_iterator;
 		 	typedef typename std::array<value_type, __K>                                     query_type; 
-			//enum class STATE { M_DEFAULT, M_NO_ACTION, M_SPLIT_NODE, M_CLEAR_BRANCH, M_EMPTY_NODE };
-			//std::atomic<STATE> _M_state; 
+			
 			struct STATE { 
 				static const int M_DEFAULT      = 0;
 				static const int M_NO_ACTION    = 1;
@@ -39,12 +38,12 @@ namespace OCTree {
 				static const int M_CLEAR_BRANCH = 3;
 				static const int M_EMPTY_NODE   = 4;
 			};
-			std::atomic<int> _M_state; 
+			std::atomic<int>                            _M_state; 
 
 			mutable sync_object_type                    _M_mutex;
 
 			_Node*                                      _M_parent;                                
-			std::array<_Node*, power<__K>::result> 		_M_child;
+			std::array<_Node*, power<__K>::result> 	    _M_child;
 			std::vector<__Val>                          _M_data;
 			_Box<__K, value_type>                       _M_box;
 		private:

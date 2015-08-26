@@ -17,6 +17,7 @@ struct TETRAHEDRON {
 
 struct  WRAPPER_CLASS;
 typedef OCTree::OCTree<3, WRAPPER_CLASS, OCTree::mutex_sync_object> OCTREE;
+typedef OCTree::_Node <3, WRAPPER_CLASS, OCTree::mutex_sync_object> NODE;
 
 struct  WRAPPER_CLASS {
   typedef double value_type;
@@ -54,25 +55,8 @@ bool WRAPPER_CLASS::operator () (box_const_type& box) const {
   return flag;
 }
 
-void fill (OCTREE* tree) {
-	const size_t num_objects = 10;
-	for(size_t i = 0; i < num_objects; ++i) {
-		for(size_t j = 0; j < num_objects; ++j) {
-			for(size_t k = 0; k < num_objects; ++k) {
-				const double x = 2*(i - num_objects/2)/num_objects;
-				const double y = 2*(j - num_objects/2)/num_objects;
-				const double z = 2*(k - num_objects/2)/num_objects;
-
-				WRAPPER_CLASS     temp;
-				temp.object     = new TETRAHEDRON();
-				temp.object->x0 = x + 0; temp.object->y0 = y + 0; temp.object->z0 = z + 0;
-				temp.object->x1 = x + 1; temp.object->y1 = y + 0; temp.object->z1 = z + 0;
-				temp.object->x2 = x + 0; temp.object->y2 = y + 1; temp.object->z2 = z + 0;
-				temp.object->x3 = x + 0; temp.object->y3 = y + 0; temp.object->z3 = z + 1;
-				tree->insert(temp);
-			}
-		}
-	}
+void fill (OCTREE* tree, const std::vector<WRAPPER_CLASS>& objects, const int& thread_num) {
+	for ( auto object : objects ) tree->insert(object);
 	return;
 }
 
@@ -81,19 +65,62 @@ void optimize(OCTREE* tree) {
 	return;
 }
 
-void check(OCTREE* tree) {
+struct functor {
+	bool operator( )( const NODE& node ) const {
+		auto box  = node._M_box;
 		
+		bool flag = true;
+		flag &= ( 0.5 >= box._M_low_bounds[0] ) && ( -0.5 <= box._M_high_bounds[0] );
+  		flag &= ( 0.5 >= box._M_low_bounds[1] ) && ( -0.5 <= box._M_high_bounds[1] );
+  		flag &= ( 0.5 >= box._M_low_bounds[2] ) && ( -0.5 <= box._M_high_bounds[2] );
+  
+  		return flag;
+	}	
+};
+
+void check(OCTREE* tree, const std::vector<WRAPPER_CLASS>& objects) {
+	OCTREE::query_type query_point = {{ 0.0, 0.0, 0.0}};
+	
+	std::vector<WRAPPER_CLASS> find_exact     = tree->find_exact    (query_point);
+	std::vector<WRAPPER_CLASS> find_nearest   = tree->find_nearest  (query_point);
+	std::vector<WRAPPER_CLASS> find_nearest_s = tree->find_nearest_s(query_point);
+	std::vector<WRAPPER_CLASS> find_if        = tree->find_if       (  functor());
+	
 	return;
 }
 
 int main() {
-	const size_t num_threads = 4;
+	const int num_threads = 8;
+	const int num_objects = 10;
 	std::vector<std::thread>   threads;
+	std::vector<WRAPPER_CLASS> objects;
+	
+	for(int i = 0; i < num_objects; ++i) {
+		for(int j = 0; j < num_objects; ++j) {
+			for(int k = 0; k < num_objects; ++k) {
+				const double x_cur = 2.*(i + 0 - num_objects/2.)/num_objects;
+				const double y_cur = 2.*(j + 0 - num_objects/2.)/num_objects;
+				const double z_cur = 2.*(k + 0 - num_objects/2.)/num_objects;
+				const double x_nxt = 2.*(i + 1 - num_objects/2.)/num_objects;
+				const double y_nxt = 2.*(j + 1 - num_objects/2.)/num_objects;
+				const double z_nxt = 2.*(k + 1 - num_objects/2.)/num_objects;
+
+				WRAPPER_CLASS     temp;
+				temp.object     = new TETRAHEDRON();
+				temp.object->x0 = x_cur; temp.object->y0 = y_cur; temp.object->z0 = z_cur;
+				temp.object->x1 = x_nxt; temp.object->y1 = y_cur; temp.object->z1 = z_cur;
+				temp.object->x2 = x_cur; temp.object->y2 = y_nxt; temp.object->z2 = z_cur;
+				temp.object->x3 = x_cur; temp.object->y3 = y_cur; temp.object->z3 = z_nxt;
+				objects.push_back(temp);
+			}
+		}
+	}
+	
 
 	OCTREE* tree = new OCTREE( OCTREE::box_type( -1, 1, -1, 1, -1, 1) );
 	//Fill the tree in multithreaded mode	
 	for (size_t i = 0; i < num_threads; ++i)
-		threads.push_back(std::thread(&fill    , tree));
+		threads.push_back(std::thread(&fill    , tree, objects, i));
 	for (size_t i = 0; i < num_threads; ++i)
 		threads[i].join();
 	threads.clear();
@@ -109,7 +136,7 @@ int main() {
 	std::cout << *tree << std::endl;	
 	//Check the tree
 	for (size_t i = 0; i < num_threads; ++i)
-		threads.push_back(std::thread(&check   , tree));
+		threads.push_back(std::thread(&check   , tree, objects));
 	for (size_t i = 0; i < num_threads; ++i)
 		threads[i].join();
 	threads.clear();

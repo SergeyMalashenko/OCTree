@@ -422,13 +422,12 @@ template <typename type> struct max {
 						bool  allOutputNodesAreLeafNodes = true;
 
 						for( it_input = begin_input; it_input != end_input; it_input++ ) {
-							const box_type& _Input_box = (*it_input)->_M_box;
-							bool  _Input_isLeafNode          = (*it_input)->isLeafNode();
-							bool  _Input_isEmptyNode         = _M_empty_branch(*it_input); 
+							bool  _Input_isLeafNode    = (*it_input)->isLeafNode();
+							bool  _Input_isEmptyNode   = _M_empty_branch(*it_input); 
 
 							if ( !_Input_isEmptyNode  ) {
 								//Check input predicates
-								bool allFunctorsTrue = functor(_Input_box); 
+								bool allFunctorsTrue = functor( *(*it_input) ); 
 								//If input predicates and the box of the current node intersect we will store child nodes
 								if(allFunctorsTrue) {
 									if ( _Input_isLeafNode ) {

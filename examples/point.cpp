@@ -13,7 +13,8 @@ struct POINT {
 };
 
 struct  WRAPPER_CLASS;
-typedef OCTree::OCTree<3, WRAPPER_CLASS> OCTREE;
+typedef OCTree::OCTree<3, WRAPPER_CLASS, OCTree::mutex_sync_object> OCTREE;
+typedef OCTree::_Node <3, WRAPPER_CLASS, OCTree::mutex_sync_object> NODE;
 
 struct  WRAPPER_CLASS {
   typedef double value_type;
@@ -36,8 +37,8 @@ bool WRAPPER_CLASS::operator () (box_const_type& box) const {
   return flag;
 }
 
-void fill (OCTREE* tree, const std::vector<WRAPPER_CLASS>& objects) {
-	for ( auto object : objects ) tree->insert(object); 
+void fill (OCTREE* tree, const std::vector<WRAPPER_CLASS>& objects, const int& thread_num) {
+	for ( auto object : objects ) tree->insert(object);
 	return;
 }
 
@@ -46,25 +47,43 @@ void optimize(OCTREE* tree) {
 	return;
 }
 
-void check(OCTREE* tree, const std::vector<WRAPPER_CLASS>& objects) {
-	for(auto object : objects) {
-		std::cout << "Lalala" << std::endl;
+struct functor {
+	bool operator( )( const NODE& node ) const {
+		auto box  = node._M_box;
+		
+		bool flag = true;
+		flag &= ( 0.5 >= box._M_low_bounds[0] ) && ( -0.5 <= box._M_high_bounds[0] );
+  		flag &= ( 0.5 >= box._M_low_bounds[1] ) && ( -0.5 <= box._M_high_bounds[1] );
+  		flag &= ( 0.5 >= box._M_low_bounds[2] ) && ( -0.5 <= box._M_high_bounds[2] );
+  
+  		return flag;
 	}	
+};
+
+void check(OCTREE* tree, const std::vector<WRAPPER_CLASS>& objects) {
+	
+	OCTREE::query_type query_point = {{ 0.0, 0.0, 0.0}};
+	
+	std::vector<WRAPPER_CLASS> find_exact     = tree->find_exact    (query_point);
+	std::vector<WRAPPER_CLASS> find_nearest   = tree->find_nearest  (query_point);
+	std::vector<WRAPPER_CLASS> find_nearest_s = tree->find_nearest_s(query_point);
+	std::vector<WRAPPER_CLASS> find_if        = tree->find_if       (  functor());
+
 	return;
 }
 
 int main() {
-	const size_t num_threads = 4;
-	const size_t num_objects = 20;
+	const int num_threads = 8;
+	const int num_objects = 10;
 	std::vector<std::thread>   threads;
 	std::vector<WRAPPER_CLASS> objects;
 	
-	for(size_t i = 0; i <= num_objects; ++i) {
-		for(size_t j = 0; j <= num_objects; ++j) {
-			for(size_t k = 0; k <= num_objects; ++k) {
-				const double x = 2*(i - num_objects/2)/num_objects;
-				const double y = 2*(j - num_objects/2)/num_objects;
-				const double z = 2*(k - num_objects/2)/num_objects;
+	for(int i = 0; i <= num_objects; ++i) {
+		for(int j = 0; j <= num_objects; ++j) {
+			for(int k = 0; k <= num_objects; ++k) {
+				const double x = 2.*(i - num_objects/2.)/num_objects;
+				const double y = 2.*(j - num_objects/2.)/num_objects;
+				const double z = 2.*(k - num_objects/2.)/num_objects;
 
 				WRAPPER_CLASS    temp;
 				temp.object    = new POINT();
@@ -73,11 +92,11 @@ int main() {
 			}
 		}
 	}
-
+	//Allocate memory
 	OCTREE* tree = new OCTREE( OCTREE::box_type( -1, 1, -1, 1, -1, 1) );
 	//Fill the tree in multithreaded mode
 	for (size_t i = 0; i < num_threads; ++i)
-		threads.push_back(std::thread(&fill    , tree, objects));
+		threads.push_back(std::thread(&fill    , tree, objects, i));
 	for (size_t i = 0; i < num_threads; ++i)
 		threads[i].join();
 	threads.clear();
@@ -92,7 +111,6 @@ int main() {
 	//Output the tree
 	std::cout << *tree << std::endl;	
 	//Check the tree in multithreaded mode
-	std::cout << "Hello world" << std::endl;
 	for (size_t i = 0; i < num_threads; ++i)
 		threads.push_back(std::thread(&check   , tree, objects));
 	for (size_t i = 0; i < num_threads; ++i)
