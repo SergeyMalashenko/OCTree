@@ -6,9 +6,11 @@ The main features
 
 *N-dimentional octree
 
-*exact object search
-*nearest object search
-*N nearest objects search
-*object search using functors
+*exact object search          find_exact(...)
 
-*multithreading
+*nearest object search        find_nearest(...)
+
+*N nearest objects search     find_nearest_s(...)
+
+*object search using functors find_if(...)
+
